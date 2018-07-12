@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 import pdb
 import pandas as pd
 import scipy.stats
@@ -21,18 +19,18 @@ MAX_STEPS = 45
 UNOCCUPIED = 0
 IS_ROCK = -1
 
-SENSE_RANGE = 1
+SENSE_RANGE = 2
 MOVE_SPEED = 1
 
 PROB_SENSE = 0.9
 
 MSG_BUFFER_SIZE = 3
 
-WORLD_H = 9
-WORLD_W = 9
+WORLD_H = 15
+WORLD_W = 15
 NUM_AGENTS = 4
 
-EXPERIMENT_VERSION = 8
+EXPERIMENT_VERSION = 'ATv1'
 
 FRAME_HEIGHT = 600
 FRAME_WIDTH = 600
@@ -58,7 +56,6 @@ class Observe(object):
     Quadrant3 = 2
     Quadrant4 = 3
     NUM_QUADRANTS = 4
-    TotalOptions = 8
 
 COLORS = ['red', 'green', 'blue', 'black', 'white', 'magenta', 'cyan', 'yellow']
 

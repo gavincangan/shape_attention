@@ -1,24 +1,14 @@
-#!/usr/bin/env python3
-
+from macros import *
 import numpy as np
-from env.gworld import *
+from gworld import *
 import random
-
-try:
-    from Tkinter import *
-except ImportError:
-    try:
-        from tkinter import *
-    except ImportError:
-        print('Unable to import Tkinter. Animation will be disabled.')
-
 
 class Visualize:
     prev_agent_highlighted = None
     DEFAULT_COLOR = 1
     HIGHLIGHT_COLOR = 2
     def __init__(self, world_data):
-        # 
+        from Tkinter import *
         self.frame = Tk()
         self.canvas = Canvas(self.frame, width=FRAME_WIDTH, height=FRAME_HEIGHT)
         self.canvas.grid()
