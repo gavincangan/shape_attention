@@ -196,4 +196,4 @@ class GridWorld:
             retval = RWD_BUMP_INTO_WALL
 
     def get_state(self, aindx):
-        pass
+        

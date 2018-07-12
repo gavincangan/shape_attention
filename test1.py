@@ -11,6 +11,5 @@ class Episode():
 		h=9, w=9,
 		nagents_rand=4,
 		boundWalls=True,
-		maxlen = 1000,
+		maxlen = 1000):
 		
-		):
