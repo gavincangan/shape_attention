@@ -6,6 +6,8 @@ from collections import deque
 from time import time
 import os
 
+from scipy.stats import entropy
+
 from keras.models import Sequential
 from keras.layers.core import Dense, Dropout, Activation
 from keras.optimizers import RMSprop, Adam
@@ -23,6 +25,7 @@ class ShapeAgent:
         self.episode_maxlen = 5000
         self.replay = deque(maxlen=16384)
         self.show_vis = show_vis
+        self.udist = np.array([0.25, 0.25, 0.25, 0.25]).reshape((1, 4))
         # self.init_env()
         # self.init_model()
 
@@ -187,22 +190,22 @@ if __name__ == "__main__":
         step_count = 0
         sa.init_env()
         agents = sa.env.get_agents()
-        print '\n>> Iter: ', i,
+        # print '\n>> Iter: ', i,
         while(step_count < sa.episode_maxlen and not done_flag):
-            #hidedis print '\n>> Count: ', i, ' -- ', step_count
+            print '\n>> Count: ', i, ' -- ', step_count
             random.shuffle(agents)
             step_count += 1
             step_mem = dict()
             shape_reward = False
             for agent in agents:
                 if not done_flag:
-                    #hidedis print ' #:', agent,
+                    print ' #:', agent,
                     step_mem[agent] = StepMemory()
 
                     state = sa.env.get_agent_state(agent).reshape(1, 2 * WORLD_H * WORLD_W)
                     attention = sa.obs_model.predict(state, batch_size=1)
                     step_mem[agent].attention = attention
-                    #hidedis print '-- O:', attention
+                    print '-- O:', attention
                     sa.env.observe(agent, attention)
 
                     state = sa.env.get_agent_state(agent).reshape(1, 2 * WORLD_H * WORLD_W)
@@ -215,7 +218,7 @@ if __name__ == "__main__":
 
                     step_mem[agent].state = state
                     step_mem[agent].action = action
-                    #hidedis print '-- A:', action
+                    print '-- A:', action
                     act_reward = sa.env.agent_action(agent, action)
                     sa.env.share_beliefs(agent)
 
@@ -272,7 +275,9 @@ if __name__ == "__main__":
                 else:
                     update_reward_act = act_reward + RWD_SHAPE_FORMED
 
-                y_obs = attention * update_reward_act
+                # print np.shape(attention), np.shape(sa.udist)
+
+                y_obs = attention * ( update_reward_act + entropy(attention, sa.udist) )
                 y_obs = np.exp(y_obs)/np.sum(np.exp(y_obs))
 
                 old_reward_act = y_act[0][action]
