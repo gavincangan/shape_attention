@@ -1,7 +1,10 @@
 from env.macros import *
 from env.gworld import *
 from env.visualize import *
+
 from collections import deque
+
+from tqdm import tqdm
 
 from time import time
 import os
@@ -16,7 +19,7 @@ from keras.callbacks import TensorBoard
 
 class ShapeAgent:
     def __init__(self, show_vis = False):
-        self.num_iter = 10000
+        self.num_iter = 2000
         self.gamma = 0.975
         self.alpha = 0.85
         self.beta = 0.75
@@ -57,11 +60,15 @@ class ShapeAgent:
 
         act_model = Sequential()
         act_model.add(shared_model)
+        act_model.add(Dense(32, kernel_initializer="lecun_uniform"))
+        act_model.add(Dense(25, kernel_initializer="lecun_uniform"))
         act_model.add(Dense(5, kernel_initializer="lecun_uniform", activation='linear'))
 
         obs_model = Sequential()
         obs_model.add(shared_model)
-        obs_model.add(Dense(4, kernel_initializer="lecun_uniform", activation='softmax'))
+        obs_model.add(Dense(64, kernel_initializer="lecun_uniform"))
+        obs_model.add(Dense(16, kernel_initializer="lecun_uniform"))
+        obs_model.add(Dense(4, kernel_initializer="lecun_uniform", activation='linear'))
 
         adam = Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=0.1, decay=0.0)
 
@@ -185,12 +192,15 @@ if __name__ == "__main__":
     tb_im_model = TensorBoard(log_dir=".logs/im_model_{}".format(time()))
     tb_im_reward = TensorBoard(log_dir=".logs/im_rwd_{}".format(time()))
 
-    for i in range(sa.num_iter):
+    quadrants = np.array(list(range(Observe.NUM_QUADRANTS)))
+
+    step_count_all = []
+    for i in tqdm(range(sa.num_iter)):
         done_flag = False
         step_count = 0
         sa.init_env()
         agents = sa.env.get_agents()
-        # print '\n>> Iter: ', i,
+        print '\n>> Iter: ', i,
         while(step_count < sa.episode_maxlen and not done_flag):
             print '\n>> Count: ', i, ' -- ', step_count
             random.shuffle(agents)
@@ -204,9 +214,18 @@ if __name__ == "__main__":
 
                     state = sa.env.get_agent_state(agent).reshape(1, 2 * WORLD_H * WORLD_W)
                     attention = sa.obs_model.predict(state, batch_size=1)
+                    attention_sm = np.exp(attention) / np.sum(np.exp(attention))
+                    # pick_quad = np.random.choice(quadrants, p = attention_sm.reshape(4,))
+
+                    # nattention = np.ones((1, 4))
+                    # nattention[0, pick_quad] = 97
+                    # nattention = nattention / np.sum(nattention)
+
+                    
+                    print '-- O:', attention, '::', attention_sm
+                    
+                    sa.env.observe(agent, attention_sm)
                     step_mem[agent].attention = attention
-                    print '-- O:', attention
-                    sa.env.observe(agent, attention)
 
                     state = sa.env.get_agent_state(agent).reshape(1, 2 * WORLD_H * WORLD_W)
                     qval_act = sa.act_model.predict(state, batch_size=1)
@@ -277,8 +296,13 @@ if __name__ == "__main__":
 
                 # print np.shape(attention), np.shape(sa.udist)
 
-                y_obs = attention * ( update_reward_act + entropy(attention, sa.udist) )
-                y_obs = np.exp(y_obs)/np.sum(np.exp(y_obs))
+                old_qval_obs = sa.obs_model.predict(old_state, batch_size=1)
+                new_qval_obs = sa.obs_model.predict(new_state, batch_size=1)
+
+                attention_sm = np.exp(attention) / np.sum(np.exp(attention))
+
+                # y_obs = attention * ( update_reward_act + WT_ENTROPY * entropy(attention, sa.udist) )
+                # y_obs = np.exp(y_obs)/np.sum(np.exp(y_obs))
 
                 old_reward_act = y_act[0][action]
 
@@ -286,6 +310,11 @@ if __name__ == "__main__":
                     y_act[0][action] = sa.alpha * update_reward_act + (1 - sa.alpha) * old_reward_act
                 else:
                     y_act[0][action] = sa.beta * update_reward_act + (1 - sa.beta) * old_reward_act
+
+                if (old_reward_act < update_reward_act):
+                    y_obs = (attention_sm * update_reward_act + (1 - attention_sm) * old_reward_act)
+                else:
+                    y_obs = (attention_sm * update_reward_act + (1 - attention_sm) * old_reward_act)
 
                 X_act_train.append(old_state)
 
